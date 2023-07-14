@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 import pyqtgraph as pg
 from PIL import Image
@@ -13,11 +14,14 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import QApplication, QGraphicsItemGroup, QGraphicsRectItem
 
+from tile import Tile
+
 
 class MapView(pg.PlotWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.painter = Painter(self)
         self.paint()
         # self.minimap = MiniMapView(self)  # 暂时不设minimap
         # self.bind_event()
@@ -34,7 +38,7 @@ class MapView(pg.PlotWidget):
         self.showGrid(True, True)
         self.getPlotItem().getViewBox().invertY(True)
         self.getPlotItem().showAxis("top")
-        self.getPlotItem().hideAxis("bottom")
+        self.getPlotItem().showAxis("right")
 
     def paint(self):
         item = pg.ScatterPlotItem()  # 创建一个绘图项，用于绘制点
@@ -57,15 +61,65 @@ class MapView(pg.PlotWidget):
         # 设置数据点
         item.setData(data)
 
-        # test: show image
-        image_data = np.flipud(np.array(Image.open("static/icon/icon.png")))
-        image = pg.ImageItem(image_data.transpose([1, 0, 2]))
-        image.setRect(QRectF(-0.5, -0.5, 1, 1))  # (x, y, width, height)
-        self.addItem(image)
+        # # test: show image
+        # image_data = np.flipud(np.array(Image.open("static/icon/icon.png")))
+        # image = pg.ImageItem(image_data.transpose([1, 0, 2]))
+        # image.setRect(QRectF(-0.5, -0.5, 1, 1))  # (x, y, width, height)
+        # self.addItem(image)
         
+        # test
+        for i in range(16):
+            for j in range(16):
+                self.painter.get_layer(0).add_tile("王城砖地", (i, j))
+
     def bind_event(self):
         self.plotItem.vb.sigStateChanged.connect(self.minimap.update_plot)
         self.sigRangeChanged.connect(self.minimap.update_overview_range)
+
+
+class Painter:
+    def __init__(self, map: MapView) -> None:
+        self.map = map
+        self.layers_name = [
+            "sky",
+            "land",
+            "land_surface",
+            "object",
+            "weather",
+            "cloud",
+        ]  # 从底层到顶层
+
+        self.init_painter()
+
+    def init_painter(self):
+        self.layers = {k: Layer(layer_num=i, map=self.map) for i, k in enumerate(self.layers_name)}
+        
+    def get_layer(self, num):
+        return self.layers[self.layers_name[num]]
+
+
+class Layer:
+    tiles = {}  # Tile对象缓存
+
+    def __init__(self, layer_num, map: MapView) -> None:
+        self.layer_num = layer_num
+        self.map = map
+        self.blocks = {}
+
+    def add_tile(self, tilename, position):
+        """在当前图层添加一块地砖。
+
+        Args:
+            tilename (str): 地砖类别中文名
+            position (tuple): 坐标
+        """
+        if tilename not in Layer.tiles.keys():
+            Layer.tiles[tilename] = Tile(tilename)
+        tile: Tile = Layer.tiles[tilename]
+        image = self.blocks[position] = pg.ImageItem(image=np.array(tile.get_tile(15)).transpose([1, 0, 2]))
+        image.setRect(QRectF(position[0], position[1], 1, 1))
+        self.map.addItem(image)
+        image.setZValue(self.layer_num)
 
 
 class MiniMapView(pg.PlotWidget):
@@ -80,11 +134,13 @@ class MiniMapView(pg.PlotWidget):
         self.setBackground(QColor(255, 255, 255))
         self.setAspectLocked(True)  # xy坐标轴始终1:1
 
-        x_limits, y_limits = [self.father.plotItem.vb.state["limits"][i] for i in ["xLimits", "yLimits"]]
-        self.setRange(
-            xRange=x_limits, yRange=y_limits
+        x_limits, y_limits = [
+            self.father.plotItem.vb.state["limits"][i] for i in ["xLimits", "yLimits"]
+        ]
+        self.setRange(xRange=x_limits, yRange=y_limits)
+        self.plotItem.vb.setLimits(
+            xMin=x_limits[0], xMax=x_limits[1], yMin=y_limits[0], yMax=y_limits[1]
         )
-        self.plotItem.vb.setLimits(xMin=x_limits[0], xMax=x_limits[1], yMin=y_limits[0], yMax=y_limits[1])
 
         self.addLegend()
         self.showGrid(True, True)
@@ -97,7 +153,7 @@ class MiniMapView(pg.PlotWidget):
         self.range_box = QGraphicsRectItem(0, 0, 1, 1)
         self.range_box.setPen(pg.mkPen("g"))  # 设置范围框的颜色为红色
         self.addItem(self.range_box)
-    
+
     def update_plot(self):
         self.plotItem.clear()
         for item in self.father.plotItem.items:
