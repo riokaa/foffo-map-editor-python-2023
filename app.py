@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QWidgetAction,
     QSlider,
 )
-from mapview import MapView
+from ui.mapview import MapView
 
 
 class MainWindow(QMainWindow):
@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("FO/FFO Map Editor Alpha By: 猫崎板子")
-        self.setGeometry(0, 0, 1280, 800)
+        self.setGeometry(0, 0, 960, 600)
         self.setWindowIcon(QIcon(self._to_icon_path("icon.png")))
         self.center_window()
 
@@ -58,15 +58,10 @@ class MainWindow(QMainWindow):
         file_menu = menu_bar.addMenu("File")
 
         # file - new/open
-        self.action_new = QAction(
-            QIcon(self._to_icon_path("new.png")), "New Model", self
-        )
+        self.action_new = QAction(QIcon(self._to_icon_path("new.png")), "New", self)
         self.action_new.setShortcut("Ctrl+N")
-        self.action_open = QAction(
-            QIcon(self._to_icon_path("open.png")), "Open Model", self
-        )
-        action_recent = QAction("Recent Model 1", self)
-        action_recent = QAction("Recent Model 2", self)
+        self.action_open = QAction(QIcon(self._to_icon_path("open.png")), "Open", self)
+        action_recent = QAction("Not Available", self)
 
         # file - save/save as
         self.action_save = QAction(QIcon(self._to_icon_path("save.png")), "Save", self)
@@ -91,7 +86,6 @@ class MainWindow(QMainWindow):
         file_menu.addAction(self.action_open)
         recent_menu = file_menu.addMenu("Recent Model")
         recent_menu.addAction(action_recent)
-        recent_menu.addAction(action_recent)
         file_menu.addSeparator()
         file_menu.addAction(self.action_save)
         file_menu.addAction(action_save_as)
@@ -99,7 +93,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(action_options)
         file_menu.addSeparator()
         file_menu.addAction(action_exit)
-        
+
         # endregion File menu
 
         # region Edit menu
@@ -155,11 +149,27 @@ class MainWindow(QMainWindow):
         """创建界面顶部工具栏。"""
         toolbar = QToolBar("Top Toolbar")
         toolbar.setIconSize(QSize(32, 32))
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.addToolBar(toolbar)
 
         toolbar.addAction(self.action_new)
         toolbar.addAction(self.action_open)
         toolbar.addAction(self.action_save)
+
+        toolbar.addSeparator()
+
+        # cdplao = ["Cursor", "Drag", "Point"]
+        # actions_cdplao = {
+        #     k: QAction(
+        #         QIcon(self._to_icon_path(f"{k.lower()}.png")), k, self, checkable=True
+        #     )
+        #     for k in cdplao
+        # }
+        # self.events.init_cdplao(actions_cdplao)
+        # for k in cdplao:
+        #     actions_cdplao[k].setShortcut(k[0])
+        #     actions_cdplao[k].triggered.connect(self.events.actions_cdplao_triggered(k))
+        #     toolbar.addAction(actions_cdplao[k])
 
         toolbar.addSeparator()
 
@@ -169,21 +179,6 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.action_fast_forward)
 
         toolbar.addSeparator()
-
-        speed_slider = QSlider(Qt.Orientation.Horizontal)
-        speed_slider.setFixedWidth(200)
-        speed_slider.setRange(1, 20)
-        speed_slider.setValue(4)
-        speed_slider.setTickPosition(QSlider.TickPosition.TicksBothSides)
-        speed_slider.setTickInterval(1)
-        speed_label = QLabel("  4x")
-        speed_slider.valueChanged.connect(
-            lambda value: speed_label.setText(f"  {value}x")
-        )
-
-        toolbar.addWidget(QLabel("  Run Speed:  "))
-        toolbar.addWidget(speed_slider)
-        toolbar.addWidget(speed_label)
 
     def create_statusbar(self):
         status_bar = self.statusBar()
